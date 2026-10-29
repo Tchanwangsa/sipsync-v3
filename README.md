@@ -34,7 +34,7 @@ Aimed at people managing polypharmacy at home. Doses are tracked in the MedSync 
 
 ## Design docs
 
-The reasoning behind every decision is in [`docs/DESIGN_RATIONALE.md`](docs/DESIGN_RATIONALE.md). Swallow confirmation is covered in [`docs/swallow-proof-pod.md`](docs/swallow-proof-pod.md), the original brief in [`docs/source/`](docs/source/), and the DS-2/v2 history in [`docs/history/`](docs/history/).
+The reasoning behind every decision is in [`docs/DESIGN_RATIONALE.md`](docs/DESIGN_RATIONALE.md). Swallow confirmation is covered in [`docs/swallow-proof-pod.md`](docs/swallow-proof-pod.md), the link to the MedSync app in [`docs/medsync-integration.md`](docs/medsync-integration.md), the original brief in [`docs/source/`](docs/source/), and the DS-2/v2 history in [`docs/history/`](docs/history/).
 
 ## Code layout
 

@@ -12,7 +12,7 @@ Written 2026-10-29 alongside the first push of the v3 viewer. For every decision
 
 | | |
 |---|---|
-| **Decision** | An independent person managing 5+ medicines at home. Doses are tracked in a companion app (MedSync). No facility eMAR link. |
+| **Decision** | An independent person managing 5+ medicines at home. Doses are tracked in a companion app (MedSync; how the two link is in [`medsync-integration.md`](medsync-integration.md)). No facility eMAR link. |
 | **Why** | The [original proposal](source/original-proposal.md) targeted residential aged care: nurses load it, eMAR charts it. On 2026-10-29 we moved to home use, because facility features (nurse witness, per-resident verification levels, eMAR charting) don't help someone living alone and add cost and integration work. |
 | **What carried over** | Collapse a complex regimen into one action per dose time. Load weekly, not dose by dose. Swallow tablets **whole** (never crush or dissolve, so coated and slow-release tablets still work). Look friendly, not clinical. |
 | **What it changes** | Nobody is there to watch a dose or decide on a retake. So v3 needs (a) **positive** proof that a dose went down, not just that it left the cup, and (b) rules a pharmacist sets in advance for what happens when it didn't. That is the job of the swallow-proof pod (§6). |
@@ -118,7 +118,7 @@ Each step answers a different question, using the cheapest sensor that can answe
 6. **Capsule storage:** how do capsules hold up in a sealed magazine for a week (brittle when dry, soft when humid)?
 7. **Regulation:** over-encapsulating plus a marker may change how the device and the pharmacy's role are classified. Ask early.
 8. **Three-capsule mouthfuls:** need bigger cells, or a rule of two per cell.
-9. **Retake rules:** "borrow from tomorrow" (move tomorrow's identical mouthful forward only after a *confirmed* failure) isn't designed yet.
+9. **Retake rules:** proposed in [`medsync-integration.md`](medsync-integration.md) §4: the person approves on the tower, the pharmacist sets in advance which medicines may be retaken (off by default), and retakes stay switched off until the breath check is validated. Not built.
 
 ## 9. Document map
 
@@ -126,6 +126,7 @@ Each step answers a different question, using the cheapest sensor that can answe
 |---|---|
 | `DESIGN_RATIONALE.md` | this file: every v3 decision and its reasoning |
 | `swallow-proof-pod.md` | ingestion confirmation: evidence, wrap options, limitations, sources |
+| `medsync-integration.md` | how the tower links to the MedSync app (proposed), plus 4 decisions with reasons: schedule on the tower, retake approval, hiding "swallow confirmed", as-needed and mid-week changes |
 | `source/original-proposal.docx` / `.md` | the original brief (Bonnie Lin, Aug 2026) |
 | `history/ds2-spec.md` | the DS-2 spec (rev J), the design v3 replaces. Written for aged care. |
 | `history/v2-design-notes.md` | the v2 audit of DS-2: what broke and the rules that came out of it |
