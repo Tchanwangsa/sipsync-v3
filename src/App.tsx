@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Engine, type PartInfo, type View } from "./engine";
 import type { Assembly } from "./types";
+import { Launcher, Player } from "./Player";
+import { SCENARIOS, type Scenario } from "./scenarios";
 
 const ASSEMBLIES: { id: Assembly; label: string; blurb: string }[] = [
   { id: "cup", label: "Cup", blurb: "Passive, dishwasher-safe" },
@@ -28,6 +30,8 @@ export function App() {
   const [hidden, setHidden] = useState<Record<Assembly, boolean>>({ cup: false, handle: false, tower: false });
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth > 1100);
   const [about, setAbout] = useState(false);
+  const [scen, setScen] = useState<Scenario | null>(null);
+  const [clock, setClock] = useState({ t: 0, beat: -1, playing: false });
 
   useEffect(() => {
     const e = new Engine(host.current!);
@@ -36,6 +40,7 @@ export function App() {
     setParts(e.partList());
     e.onHover = (id, x, y) => setHover(id ? { id, x, y } : null);
     e.onPick = (id) => setSelected(id);
+    e.onScene = (t, beat, playing) => setClock((c) => (c.t === t && c.beat === beat && c.playing === playing ? c : { t, beat, playing }));
     const mq = matchMedia("(prefers-color-scheme: dark)");
     const theme = () => e.setTheme(mq.matches);
     theme();
@@ -53,7 +58,7 @@ export function App() {
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
-      if ((ev.target as HTMLElement).tagName === "INPUT") return;
+      if ((ev.target as HTMLElement).tagName === "INPUT" || document.body.classList.contains("cinema")) return;
       if (ev.key === "Escape") setSelected(null);
       if (ev.key === "x") setXray((v) => !v);
       if (ev.key === "e") setExplode((v) => (v > 0.5 ? 0 : 1));
@@ -68,9 +73,17 @@ export function App() {
   const hov = hover ? byId.get(hover.id) : undefined;
 
   const goView = (v: View) => { setView(v); engine.current?.setView(v); };
+  const play = (s: Scenario | null) => {
+    setScen(s);
+    setSelected(null);
+    setAbout(false);
+    engine.current?.playScenario(s);
+    document.body.classList.toggle("cinema", !!s);
+  };
+  const nextScen = scen ? SCENARIOS[SCENARIOS.indexOf(scen) + 1] : undefined;
 
   return (
-    <div className="app">
+    <div className={`app ${scen ? "cinema" : ""}`}>
       <div className="stage" ref={host} />
 
       <header className="brand">
@@ -80,8 +93,8 @@ export function App() {
           <span className="tag">v3</span>
         </div>
         <p>Oralflo-style cup · medication tower · swallow-proof pods</p>
-        <button className="link" onClick={() => setAbout((v) => !v)}>{about ? "Hide concept" : "The concept"}</button>
-        {about && (
+        {!scen && <button className="link" onClick={() => setAbout((v) => !v)}>{about ? "Hide concept" : "The concept"}</button>}
+        {about && !scen && (
           <ol className="about">
             <li><b>The cup is just a cup.</b> Oralflo-style: capsules wait dry on a grill under a spout that leans back over the lid, so when she tips the cup to drink it points level into her mouth. They go down with the first water. Drag Sip to watch. The handle is plain moulding on a rail, so the whole cup goes in the dishwasher.</li>
             <li><b>The tower does the thinking.</b> The cup nests into its cove; a magnet opens a flush shutter in the lid and one mouthful rolls down a ramp onto the grill. Sensors, not a camera, confirm it landed and left. Syncs to the MedSync app.</li>
@@ -90,6 +103,7 @@ export function App() {
         )}
       </header>
 
+      {!scen && <>
       <button className={`panel-toggle ${panelOpen ? "on" : ""}`} onClick={() => setPanelOpen((v) => !v)} aria-expanded={panelOpen}>
         Parts
       </button>
@@ -149,6 +163,8 @@ export function App() {
       )}
 
       <nav className="toolbar">
+        <Launcher onPick={play} />
+        <span className="sep" />
         <label className="slider">
           <span>Explode</span>
           <input type="range" min={0} max={1} step={0.01} value={explode} onChange={(e) => setExplode(+e.target.value)} />
@@ -170,6 +186,18 @@ export function App() {
 
       {hov && hover && hover.id !== selected && (
         <div className="tip" style={{ left: hover.x + 14, top: hover.y + 14 }}>{hov.name}</div>
+      )}
+      </>}
+
+      {scen && (
+        <Player
+          scenario={scen} t={clock.t} beat={clock.beat} playing={clock.playing}
+          onSeek={(t) => engine.current?.seek(t)}
+          onPlay={(on) => engine.current?.setPlaying(on)}
+          onNext={() => nextScen && play(nextScen)}
+          onClose={() => play(null)}
+          hasNext={!!nextScen}
+        />
       )}
     </div>
   );

@@ -6,6 +6,8 @@ import { BORE_PATH, buildCup, rInner } from "./parts/cup";
 import { buildHandle } from "./parts/handle";
 import { buildTower } from "./parts/tower";
 import type { Assembly, PartDef } from "./types";
+import { ScenarioFx } from "./fx";
+import type { Scenario, SceneState, Shot } from "./scenarios";
 
 // The imperative 3D side of the viewer. React owns the UI and talks to this through
 // setters; the engine eases every change (explode, x-ray, selection, camera) per frame.
@@ -142,6 +144,16 @@ export class Engine {
 
   onHover: (id: string | null, x: number, y: number) => void = () => {};
   onPick: (id: string | null) => void = () => {};
+  /** Scenario clock, every frame while one is loaded. */
+  onScene: (t: number, beat: number, playing: boolean) => void = () => {};
+
+  // scenario player
+  private scen: Scenario | null = null;
+  private scenT = 0;
+  private playing = false;
+  private shotBeat = -1;
+  private fx: ScenarioFx;
+  private elapsed = 0;
 
   constructor(private host: HTMLElement) {
     const r = (this.renderer = new THREE.WebGLRenderer({ antialias: true }));
@@ -197,6 +209,15 @@ export class Engine {
     this.head.visible = false;
     this.scene.add(this.head);
 
+    this.fx = new ScenarioFx(this.scene, this.roots.cup, {
+      get: (id) => this.parts.get(id)?.def.object,
+      mat: (id, name) => {
+        const p = this.parts.get(id);
+        const i = p ? p.meshes.findIndex((m) => m.name === name) : -1;
+        return i >= 0 ? (p!.mats[i].mat as THREE.MeshStandardMaterial) : undefined;
+      },
+    });
+
     this.controls = new OrbitControls(this.camera, r.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
@@ -248,6 +269,35 @@ export class Engine {
     if (was !== v > 0) this.setView(this.view);   // reframe to take in the drinker, or back
   }
   select(id: string | null) { this.selected = id; }
+
+  /** Load a scenario and play it from the start (null leaves it and restores the free view). */
+  playScenario(s: Scenario | null) {
+    this.scen = s;
+    this.scenT = 0;
+    this.playing = !!s;
+    this.shotBeat = -1;
+    this.controls.minDistance = s ? 40 : 180;
+    if (!s) { this.fx.reset(); this.sipDrawn = -1; this.setView(this.view); this.onScene(0, -1, false); }
+  }
+  seek(t: number) {
+    if (!this.scen) return;
+    this.scenT = THREE.MathUtils.clamp(t, 0, this.scen.duration);
+  }
+  setPlaying(on: boolean) {
+    if (!this.scen) return;
+    if (on && this.scenT >= this.scen.duration - 1e-3) { this.scenT = 0; this.shotBeat = -1; }
+    this.playing = on;
+  }
+
+  /** Ease the camera to a scenario shot, sized like setView so it frames on any aspect. */
+  private shoot(shot: Shot) {
+    // Drop the whole shot a little so the subject sits above the caption and the player bar.
+    const target = new THREE.Vector3(...shot.target).add(new THREE.Vector3(0, -0.2 * shot.r, 0));
+    const vFov = THREE.MathUtils.degToRad(this.camera.fov);
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * this.camera.aspect);
+    const dist = shot.r / Math.sin(Math.min(vFov, hFov) / 2);
+    this.camGoal = { pos: target.clone().addScaledVector(new THREE.Vector3(...shot.dir).normalize(), dist), target };
+  }
   hover(id: string | null) { this.hovered = id; }
   setAssemblyVisible(a: Assembly, on: boolean) { this.visible[a] = on; }
 
@@ -346,11 +396,26 @@ export class Engine {
 
   private frame() {
     const dt = Math.min(this.clock.getDelta(), 0.05);
-    this.explode = ease(this.explode, this.explodeT, dt, 7);
-    this.xray = ease(this.xray, this.xrayT ? 1 : 0, dt, 9);
-    this.sip = ease(this.sip, this.sipT, dt, 6);
-    if (Math.abs(this.sip - this.sipT) < 1e-4) this.sip = this.sipT;
+    this.elapsed += dt;
+    let st: SceneState | null = null;
+    if (this.scen) {
+      if (this.playing) {
+        this.scenT += dt;
+        if (this.scenT >= this.scen.duration) { this.scenT = this.scen.duration; this.playing = false; }
+      }
+      st = this.scen.sample(this.scenT);
+      if (st.beat !== this.shotBeat) { this.shotBeat = st.beat; this.shoot(this.scen.beats[st.beat].shot); }
+      this.onScene(this.scenT, st.beat, this.playing);
+      this.explode = 0;
+      this.sip = st.v.sip;
+    } else {
+      this.explode = ease(this.explode, this.explodeT, dt, 7);
+      this.sip = ease(this.sip, this.sipT, dt, 6);
+      if (Math.abs(this.sip - this.sipT) < 1e-4) this.sip = this.sipT;
+    }
+    this.xray = ease(this.xray, st ? st.xray : this.xrayT ? 1 : 0, dt, 9);
     this.poseCup();
+    this.fx.pose(st, this.elapsed);
 
     // Throttled hover raycast.
     if ((this.hoverTick = (this.hoverTick + 1) % 3) === 0 && this.pointerIn) {
@@ -362,17 +427,25 @@ export class Engine {
       const { def } = p;
       p.holder.position.copy(def.explode).multiplyScalar(this.explode);
       let gone = 1;
-      if (def.id === "mouthful") gone = this.carryMouthful(p.holder);
+      if (def.id === "mouthful") gone = st && st.v.eaten > 0.5 ? 0 : this.carryMouthful(p.holder);
 
-      let target = this.visible[def.assembly] ? 1 : 0;
-      if (def.internal) target *= showInternals;
-      else target *= 1 - 0.86 * this.xray;
-      if (this.selected && this.selected !== def.id) target *= 0.12;
+      let target: number;
+      if (st) {
+        // Scenario: X-ray shows only the parts this beat is about.
+        const on = st.focus.has(def.id);
+        target = def.internal ? (on ? this.xray : 0) : on ? 1 : 1 - 0.88 * this.xray;
+      } else {
+        target = this.visible[def.assembly] ? 1 : 0;
+        if (def.internal) target *= showInternals;
+        else target *= 1 - 0.86 * this.xray;
+        if (this.selected && this.selected !== def.id) target *= 0.12;
+      }
       target *= gone;
       p.fade = ease(p.fade, target, dt, 10);
       p.glow = ease(p.glow, this.hovered === def.id || this.selected === def.id ? 1 : 0, dt, 14);
       this.applyLook(p);
     }
+    this.fx.paint(st);
 
     if (this.camGoal) {
       this.camera.position.lerp(this.camGoal.pos, 1 - Math.exp(-6 * dt));

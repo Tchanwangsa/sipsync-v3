@@ -9,6 +9,9 @@
   --cup: #9fc3cc;
   --handle: #8fa79a;
   --tower: #cfc6b6;
+  --sheet: rgba(251, 250, 247, 0.96);
+  --ok: #2f9e66;
+  --miss: #d05a46;
   --shadow: 0 1px 2px rgba(30, 30, 25, 0.04), 0 8px 28px rgba(30, 30, 25, 0.08);
   color-scheme: light;
 }
@@ -22,6 +25,9 @@
     --accent: #86b59e;
     --accent-ink: #13201a;
     --tower: #8b8476;
+    --sheet: rgba(36, 39, 40, 0.97);
+    --ok: #4cc386;
+    --miss: #ec7a66;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 10px 30px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
@@ -44,7 +50,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
 /* Floating surfaces share one look */
-.brand .about, .panel, .card, .toolbar, .tip, .panel-toggle {
+.brand .about, .panel, .card, .toolbar, .tip, .panel-toggle, .player, .caption {
   background: var(--glass);
   backdrop-filter: blur(18px) saturate(1.2);
   -webkit-backdrop-filter: blur(18px) saturate(1.2);
@@ -132,6 +138,80 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   position: absolute; pointer-events: none; padding: 4px 9px; border-radius: 8px; font-size: 12px; font-weight: 500;
 }
 
+/* Scenarios: launcher + sheet */
+.launcher { position: relative; }
+.play-pill {
+  display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 14px 0 12px; border-radius: 999px;
+  background: var(--accent); color: var(--accent-ink); font-weight: 600;
+}
+.play-pill:hover, .play-pill.on { filter: brightness(1.06); }
+.sheet {
+  position: absolute; left: -6px; bottom: calc(100% + 14px); width: 468px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px; border-radius: 20px;
+  background: var(--sheet); border: 1px solid var(--line); box-shadow: var(--shadow);
+  white-space: normal; animation: rise 0.2s ease-out;
+}
+.scene {
+  position: relative; display: grid; gap: 1px; text-align: left; padding: 12px 12px 11px; border-radius: 14px;
+  transition: background 0.15s;
+}
+.scene:hover { background: var(--line); }
+.scene .glyph {
+  width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; margin-bottom: 8px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent);
+}
+.scene.hero .glyph { background: var(--accent); color: var(--accent-ink); }
+.scene b { font-weight: 600; font-size: 13px; }
+.scene small { color: var(--mute); font-size: 11.5px; line-height: 1.3; }
+.scene i { position: absolute; top: 12px; right: 12px; font-style: normal; font-size: 10.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
+
+/* Scenarios: cinema mode */
+.app.cinema .brand p { display: none; }
+.caption {
+  position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%);
+  max-width: calc(100% - 32px); padding: 11px 20px 12px; border-radius: 18px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; animation: capIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.caption h2 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+.caption p { margin: 3px 0 0; color: var(--mute); font-size: 12.5px; }
+.caption .badge {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; margin: 2px 0 8px;
+  color: #fff; font-size: 15px; font-weight: 700; animation: pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.caption.ok .badge { background: var(--ok); }
+.caption.miss .badge { background: var(--miss); }
+.caption.ok h2 { color: var(--ok); }
+.caption.miss h2 { color: var(--miss); }
+@keyframes capIn { from { opacity: 0; transform: translate(-50%, 8px); filter: blur(3px); } }
+@keyframes pop { from { transform: scale(0.3); opacity: 0; } }
+
+.player {
+  position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
+  width: min(700px, calc(100% - 32px)); display: flex; align-items: center; gap: 12px;
+  padding: 6px 8px 6px 6px; border-radius: 999px; animation: rise 0.25s ease-out;
+}
+.round {
+  flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--ink); color: var(--bg);
+}
+.round.ghost { background: none; color: var(--mute); font-size: 20px; line-height: 1; }
+.round.ghost:hover { background: var(--line); color: var(--ink); }
+.who { display: flex; align-items: center; gap: 6px; color: var(--mute); font-weight: 500; white-space: nowrap; }
+.who svg { width: 16px; height: 16px; color: var(--accent); }
+.track { flex: 1; display: flex; gap: 3px; height: 26px; align-items: center; cursor: pointer; touch-action: none; }
+.track .seg {
+  position: relative; height: 4px; border-radius: 3px; background: var(--line); overflow: hidden;
+  flex-basis: 0; transition: height 0.15s;
+}
+.track:hover .seg, .track .seg.now { height: 6px; }
+.track .seg > span { position: absolute; inset: 0; background: var(--accent); transform-origin: left; }
+.track .seg.ok > span { background: var(--ok); }
+.track .seg.miss > span { background: var(--miss); }
+.count { color: var(--mute); font-size: 11.5px; font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
+.next {
+  height: 28px; padding: 0 12px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 600; white-space: nowrap;
+}
+
 @media (max-width: 760px) {
   .brand { top: 14px; left: 16px; right: 16px; max-width: none; }
   .brand p { display: none; }
@@ -144,4 +224,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   .toolbar .sep { display: none; }
   .slider { flex: 1 1 100%; justify-content: center; }
   .slider input { flex: 1; max-width: 260px; }
+  .launcher { position: static; }
+  .sheet { left: 0; right: 0; bottom: calc(100% + 10px); width: auto; grid-template-columns: repeat(2, 1fr); }
+  .caption { bottom: 84px; }
+  .caption h2 { font-size: 18px; }
+  .player { bottom: 16px; gap: 8px; }
+  .who span, .count { display: none; }
 }

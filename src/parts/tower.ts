@@ -44,6 +44,23 @@ const PRESS_Y = T0 + 66;
 const FEED = { x: WS_X + 2, z: FRONT_Z - 14 };   // feed slot / tube, front-left
 const LIFT_Z = DECK_C.z;                          // lift faces the decks' filing gate at 180°
 const BODY_Z = LIFT_Z - 18, CAPS_Z = LIFT_Z + 20;
+const CAR_Y = MAG_Y + TOWER.deckH + 6;            // filing lift carriage, parked at deck 2
+const BREATH_INLET = new THREE.Vector3(LID.port.w / 2 + 2.5, PY - LID.port.h / 2 - 1, -TOWER.coveR + 1.6);
+const BREATH_AT = new THREE.Vector3(20, PY - 6, -TOWER.coveR - 12);
+
+/** World anchors the scenario player animates along (see scenarios.ts). */
+export const TOWER_ANCHORS = {
+  deckC: DECK_C, magY: MAG_Y, deckR: DECK_R, dropDir: DROP_DIR, drop: DROP,
+  chuteFrom: CHUTE_FROM, chuteTo: CHUTE_TO,
+  beamY: CHUTE_FROM.y + 8, beamAcross: new THREE.Vector3(-DROP_DIR.y, 0, -DROP_DIR.x),
+  magnet: new THREE.Vector3(0, PY - 16, -TOWER.coveR - 10),
+  tof: new THREE.Vector3(-1, PY + 4.5, -TOWER.coveR - 1.4),
+  breathInlet: BREATH_INLET, breathSensor: BREATH_AT,
+  halo: new THREE.Vector3(0, T0 + BODY_H - 18, -TOWER.coveR + 4),
+  feed: new THREE.Vector3(FEED.x, T0 + TOWER.h, FEED.z),
+  press: new THREE.Vector3(WS_X, PRESS_Y + 14, FEED.z), gaugeY: PRESS_Y + 36,
+  wsX: WS_X, liftZ: LIFT_Z, carY: CAR_Y,
+};
 
 const deg = (r: number) => Math.round(THREE.MathUtils.radToDeg(r));
 const disc = (r: number, h: number, seg = 48) => new THREE.CylinderGeometry(r, r, h, seg);
@@ -528,6 +545,7 @@ function buildWrapStation(): PartDef {
   shuttle.position.set(WS_X, PRESS_Y + 6, FEED.z);
   g.add(shuttle);
   const nest = pod(MEDS[0]);
+  nest.name = "nest-pod";
   nest.rotation.x = -Math.PI / 2;      // wrapped standing up; the lift lays it down in the cell
   nest.position.set(WS_X, PRESS_Y + 14 + POD.len / 2, FEED.z);
   g.add(nest);
@@ -544,7 +562,7 @@ function buildWrapStation(): PartDef {
   const liftMotor = mesh(plinth(roundedRect(14, 14, 2), 12, 1), MAT.motor, "lift-motor");
   liftMotor.position.set(WS_X - 4, PRESS_Y - 12, LIFT_Z);
   g.add(liftMotor);
-  const carY = MAG_Y + TOWER.deckH + 6;
+  const carY = CAR_Y;
   const carriage = mesh(new THREE.BoxGeometry(12, 8, 14), MAT.sage, "lift-carriage");
   carriage.position.set(WS_X, carY, LIFT_Z);
   g.add(carriage);
@@ -568,9 +586,7 @@ function buildWrapStation(): PartDef {
 
 function buildBreathSensor(): PartDef {
   const g = new THREE.Group();
-  const zf = -TOWER.coveR;
-  const inlet = new THREE.Vector3(LID.port.w / 2 + 2.5, PY - LID.port.h / 2 - 1, zf + 1.6);
-  const sensorAt = new THREE.Vector3(20, PY - 6, zf - 12);
+  const inlet = BREATH_INLET, sensorAt = BREATH_AT;
   const ring = mesh(faceDisc(1.2, 0.6, 16), MAT.chip, "sample-inlet");
   ring.position.copy(inlet);
   g.add(ring);

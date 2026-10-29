@@ -124,6 +124,12 @@ export const BORE_PATH = [
   SPOUT_TIP.clone().setY(SPOUT_TIP.y + CUP.h),
 ];
 
+/** Cup-local ends of the ramp floor's centre line: just inside the back port, and its foot at the well. */
+export const RAMP_PATH = [
+  new THREE.Vector3(0, CUP.h + LID.ramp.yBack, RAMP_Z0),
+  new THREE.Vector3(0, CUP.h + GRILL_TOP, RAMP_Z1),
+];
+
 function spout(): THREE.Object3D {
   const { od, id, len, ribs } = SP;
   const ro = od / 2, ri = id / 2, sink = 6;
